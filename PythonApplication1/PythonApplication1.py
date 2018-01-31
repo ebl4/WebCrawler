@@ -1,5 +1,6 @@
 from urllib import request, parse
-import re, requests, csv, time
+from datetime import date
+import re, requests, csv, time, sys, DataAccess
 from lxml import html
 from selenium import webdriver
 
@@ -29,18 +30,21 @@ def file_download(url):
     with open('file.csv', 'wb') as f:
         f.write(csv)       
 
-def scrapeLogIn(url="https://pagseguro.uol.com.br/login.jhtml"):
+def scrapeLogIn(*argv):
     """Realiza o scrape no log in da pagina inicial"""
 
     """Payload com os parâmetros de entrada para o log in"""
-    payload = {'user': '<USERNAME', 
-               'pass': '<PASSWORD',
+    payload = {'user': '<USERNAME>', 
+               'pass': '<PASSWORD>',
                'dest' : 'REDIR|https://pagseguro.uol.com.br/hub.jhtml',
                'skin' : 'ps',
                'acsrfToken' : ''}
 
+    payload['user'] = argv[0]
+    payload['pass'] = argv[1]
     """Sessão iniciada e encarrega de fechá-la ao final com o with"""
     with requests.session() as session_request:
+        url="https://pagseguro.uol.com.br/login.jhtml"
         urlPrefix = ['https://pagseguro.uol.com.br']
 
         "Início da requisição GET na página de log in"
@@ -61,9 +65,9 @@ def scrapeLogIn(url="https://pagseguro.uol.com.br/login.jhtml"):
                            'dateFrom' : '', 'dateTo' : '', 'dateToInic' : '', 'timeFrom' : '00:00', 'timeTo' : '23:59',
                           'status' : '3', 'status' : '1', 'status' : '4', 'status' : '2', 'status' : '5', 'status' : '6', 
                           'paymentMethod' : '', 'type' : '', 'operationType' : 'T', 'selectedFilter' : 'all', 'filterText' : '', 'fileType' : ''}
-        payloadComDatas['dateFrom'] = '26/01/2018'
-        payloadComDatas['dateTo'] = '30/01/2018'
-        payloadComDatas['dateToInic'] = '30/01/2018' # Vem com o mesmo valor de data final
+        payloadComDatas['dateFrom'] = argv[2]
+        payloadComDatas['dateTo'] = argv[3]
+        payloadComDatas['dateToInic'] = argv[3] # Vem com o mesmo valor de data final
 
         "Codifica o payload para inserir na URL"
         params = parse.urlencode(payloadComDatas)
@@ -79,7 +83,7 @@ def scrapeLogIn(url="https://pagseguro.uol.com.br/login.jhtml"):
         """Recupera o nome do primeiro arquivo gerado no histórico"""
         tree = html.fromstring(result5.text)
         fileName = tree.xpath("//tr/@onclick")[0]
-        fileName = fileName[19:-1]
+        fileName = fileName[19:-1] #formata a posição do filename
         urlPrefix.append(fileName)
         urlFile = ''.join(urlPrefix)
     
@@ -97,7 +101,25 @@ def scrapeLogIn(url="https://pagseguro.uol.com.br/login.jhtml"):
         session_request.get("https://pagseguro.uol.com.br/logout.jhtml")
         time.sleep(5)
 
-    
+def scrapeEstabelecimentos(*argv):
+    """Realiza scrape para cada estabelecimento no banco de dados"""
+    if(argv):
+        "Dados de um usuario do banco"
+        codigo = '1234567890'
+        result = DataAccess.getById(codigo)[0]
+        user = result[0]
+        passw = result[1]
+        scrapeLogIn(user, passw, argv[2], argv[3])
+
+    else:
+        estabs = DataAccess.getAll()
+        for estab in estabs:
+            user = estab[0]
+            passw = estab[1]
+            today = date.today()
+            dataFrom = date(today.year, today.month, today.day-1)
+            args = [user, passw, dataFrom, dataFrom]
+            scrapeLogIn(args)
 
 def fileReading():
     result = ""
@@ -107,4 +129,9 @@ def fileReading():
     return result
 
 if __name__ == "__main__":
-    scrapeLogIn()
+    scrapeEstabelecimentos()
+
+    #if (sys.argv):
+    #    scrapeEstabelecimentos(sys.argv)
+    #else:
+    #    scrapeEstabelecimentos()
