@@ -3,13 +3,14 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>b6e272f6-ddbc-4ae9-b155-3647de08aba2</ProjectGuid>
-    <ProjectHome>.</ProjectHome>
-    <StartupFile>DataAccess.py</StartupFile>
+    <ProjectHome>
+    </ProjectHome>
+    <StartupFile>PagSeguro.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
-    <Name>PythonApplication1</Name>
+    <Name>PagSeguroCrawler</Name>
     <RootNamespace>PythonApplication1</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -24,10 +25,10 @@
     <Compile Include="DataAccess.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="PythonApplication1.py" />
+    <Compile Include="PagSeguro.py" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="dict_payload" />
+    <Content Include="logging.conf" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
