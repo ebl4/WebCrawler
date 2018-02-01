@@ -1,5 +1,5 @@
 from urllib import request, parse
-from datetime import date
+from datetime import datetime, timedelta
 import re, requests, csv, time, sys, DataAccess
 from lxml import html
 from selenium import webdriver
@@ -102,10 +102,10 @@ def scrapeLogIn(*argv):
         time.sleep(5)
 
 def scrapeEstabelecimentos(*argv):
-    """Realiza scrape para cada estabelecimento no banco de dados"""
+    """Realiza scrape para estabelecimentos no banco de dados ou pelos params"""
     if(argv):
         "Dados de um usuario do banco"
-        codigo = '1234567890'
+        codigo = argv[1]
         result = DataAccess.getById(codigo)[0]
         user = result[0]
         passw = result[1]
@@ -116,10 +116,8 @@ def scrapeEstabelecimentos(*argv):
         for estab in estabs:
             user = estab[0]
             passw = estab[1]
-            today = date.today()
-            dataFrom = date(today.year, today.month, today.day-1)
-            args = [user, passw, dataFrom, dataFrom]
-            scrapeLogIn(args)
+            dataFrom = datetime.strftime(datetime.now() - timedelta(1), '%d/%m/%Y')
+            scrapeLogIn(user, passw, dataFrom, dataFrom)
 
 def fileReading():
     result = ""
