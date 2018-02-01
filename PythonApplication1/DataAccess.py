@@ -6,7 +6,7 @@ def connection():
                           "Database=DEV_CONCILIADORA;"
                           "Trusted_Connection=yes;")
 
-def getById(refoPr_id):
+def getById(refoPr_estab):
     result = []
     cnxn = connection()
 
@@ -20,7 +20,7 @@ def getById(refoPr_id):
 		WHERE   cef.CEF_ATIVO = 1
 		AND     refop.REFOPR_ATIVO = 1
 		AND     refop.CO_ID = 35
-		AND		refop.REFOPR_ESTABELECIMENTO = ?;""", str(refoPr_id))
+		AND		refop.REFOPR_ESTABELECIMENTO = ?;""", str(refoPr_estab))
 
     for row in cursor:
         result.append(row)
