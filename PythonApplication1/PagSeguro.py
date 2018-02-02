@@ -34,31 +34,25 @@ def scrapeLogIn(*argv):
     with requests.session() as session_request:
 
         try:
-            url="https://pagseguro.uol.com.br/login.jhtml"
+            urls=["https://pagseguro.uol.com.br/login.jhtml", "https://pagseguro.uol.com.br/transaction/search.jhtml","https://pagseguro.uol.com.br/transaction/find.jhtml", 
+                  "https://pagseguro.uol.com.br/transaction/hist.jhtml", "https://pagseguro.uol.com.br/logout.jhtml"]
             urlPrefix = ['https://pagseguro.uol.com.br']
 
             "Início da requisição GET na página de log in"
             logger.info('requisicao GET na pagina de log in')
-            result = session_request.get(url)
+            result = session_request.get(urls[0])
             tree = html.fromstring(result.text)
 
             "Payload com os parâmetros de entrada para o log in"
             payload = formatPayloadLogIn(argv[0], argv[1])
-                   
-            authenticity_token = list(set(tree.xpath("//input[@name='acsrfToken']/@value")))[0]
-            skin = list(set(tree.xpath("//input[@name='skin']/@value")))[0]
-            dest = list(set(tree.xpath("//input[@name='dest']/@value")))[0]
-            payload['acsrfToken'] = authenticity_token
-            payload['skin'] = skin
-            payload['dest'] = dest
-            
+            payload = formatPayloadLogInAuth(payload, tree)
+          
             logger.info('requisicao POST na pagina de log in')
-            result = session_request.post(url, payload)
+            result = session_request.post(urls[0], payload)
 
             """Requisição GET ao painel de extrato"""
-            url2 = "https://pagseguro.uol.com.br/transaction/search.jhtml"
             logger.info('requisicao GET na pagina de extrato')
-            result2 = session_request.get(url2)
+            result2 = session_request.get(urls[1])
 
             """ Payload com as datas e filtros"""
             logger.info('formatando payload com datas')
@@ -67,30 +61,34 @@ def scrapeLogIn(*argv):
             "Codifica o payload para inserir na URL"
             logger.info('codificando payload com datas')
             params = parse.urlencode(payloadComDatas)
-            url4 = "https://pagseguro.uol.com.br/transaction/find.jhtml"
 
             "Requisicao GET para exibir o extrato com as datas"
             logger.info('requisicao GET na pagina de transações')
-            result4 = session_request.get(url4, params = params)
+            result4 = session_request.get(urls[2], params = params)
 
             "Requisicao GET para acessar o histórico gerado"
             logger.info('acessando o histórico com requisicao GET')
-            url5 = "https://pagseguro.uol.com.br/transaction/hist.jhtml"
-            result5 = session_request.get(url5)
+            result5 = session_request.get(urls[3])
 
             """Recupera o nome do primeiro arquivo gerado no histórico"""
             logger.info('recuperando arquivo gerado')
             urlFile = findFile(result5, urlPrefix)
+            
+            index = urlFile.find("PagSeguro")
+            if(index == -1):
+                logger.warning("Nome do arquivo fora do padrao")
+                index = 0
+            fileName = fileNameFormat(urlFile, str(argv[4]), index)
     
             """Download do arquivo gerado no histórico"""
             logger.info('baixando arquivo gerado')
             data = session_request.get(urlFile)
     
-            fileWriter(data)
+            fileWriter(data, fileName)
 
             """Faz log out da página"""
             logger.info('realizando log out..')
-            session_request.get("https://pagseguro.uol.com.br/logout.jhtml")
+            session_request.get(urls[4])
             time.sleep(5)
         except IndexError as error:
             logger.error(error)
@@ -104,17 +102,19 @@ def scrapeEstabelecimentos(*argv):
         result = DataAccess.getById(str(codigo))
         user = result[0][0]
         passw = result[0][1]
+        refoId = result[0][2]
         logger.info('usuario %s', user)
-        scrapeLogIn(user, passw, argv[1], argv[2])
+        scrapeLogIn(user, passw, argv[1], argv[2], refoId)
 
     else:
         estabs = DataAccess.getAll()
         for estab in estabs:
             user = estab[0]
             passw = estab[1]
+            refoId = estab[2]
             dataFrom = datetime.strftime(datetime.now() - timedelta(1), '%d/%m/%Y')
             logger.info('usuario %s - data %s', user, dataFrom)
-            scrapeLogIn(user, passw, dataFrom, dataFrom)
+            scrapeLogIn(user, passw, dataFrom, dataFrom, refoId)
 
 def formatPayloadLogIn(*args):
     payload = {'user': '<USERNAME>', 
@@ -127,6 +127,14 @@ def formatPayloadLogIn(*args):
     payload['pass'] = args[1]
     return payload
 
+"""Formata o payload do log in com os dados de autenticacao"""
+def formatPayloadLogInAuth(payload, tree):
+    payload['acsrfToken'] = list(set(tree.xpath("//input[@name='acsrfToken']/@value")))[0]
+    payload['skin'] = list(set(tree.xpath("//input[@name='skin']/@value")))[0]
+    payload['dest'] = list(set(tree.xpath("//input[@name='dest']/@value")))[0]
+    return payload
+
+"""Formata o payload com datas"""
 def formatPayload(*argv):
     payloadComDatas = {'page': '1', 'pageCmd' : '', 'exibirFiltro' : 'false', 'exibirHora' : 'false', 'interval' : '3', 
                                'dateFrom' : '', 'dateTo' : '', 'dateToInic' : '', 'timeFrom' : '00:00', 'timeTo' : '23:59',
@@ -137,6 +145,16 @@ def formatPayload(*argv):
     payloadComDatas['dateToInic'] = argv[1] # Vem com o mesmo valor de data final
     return payloadComDatas
 
+"""Formata o nome do arquivo"""
+def fileNameFormat(urlFile, refoId, index):
+            fileName = []
+            fileName.append(urlFile[index:-4]) #Concatena a url retirando a extensao .csv .xml
+            fileName.append("_")
+            fileName.append(refoId)
+            fileName = ''.join(fileName)
+            return fileName
+
+"""Encontra o arquivo na página e retorna seu endereço"""
 def findFile(page, urlPrefix):
     tree = html.fromstring(page.text)
     fileName = tree.xpath("//tr/@onclick")[0]
@@ -148,13 +166,12 @@ def findFile(page, urlPrefix):
     return ''.join(urlPrefix)
 
 "Escreve os dados na saída a partir do leitor csv"
-def fileWriter(data):
-    with open('out.csv', 'w') as f:
+def fileWriter(data, name):
+    with open('%s.csv' % name, 'w') as f:
         writer = csv.writer(f)
         reader = csv.reader(data.text.splitlines())
         for row in reader:
             writer.writerow(row)
-
 
 if __name__ == "__main__":
     if (len(sys.argv) == 4):

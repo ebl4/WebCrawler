@@ -12,7 +12,8 @@ def getById(refoPr_estab):
 
     cursor = cnxn.cursor()
     cursor.execute("""SELECT  rpm.RPM_USER,
-        rpm.RPM_PASSWD
+        rpm.RPM_PASSWD,
+        refop.REFO_ID
 		FROM    dbo.REFOPR_PAGAR_ME AS rpm
 		JOIN    dbo.REL_EMPRESA_FILIAL_OPERADORA_PR AS refop ON refop.REFOPR_ID = rpm.REFOPR_ID
 		JOIN    dbo.REL_EMPRESA_FILIAL_OPERADORA AS refo ON refo.REFO_ID = refop.REFO_ID
@@ -33,7 +34,8 @@ def getAll():
 
     cursor = cnxn.cursor()
     cursor.execute("""SELECT  rpm.RPM_USER,
-        rpm.RPM_PASSWD
+        rpm.RPM_PASSWD,
+        refop.REFO_ID
 		FROM    dbo.REFOPR_PAGAR_ME AS rpm
 		JOIN    dbo.REL_EMPRESA_FILIAL_OPERADORA_PR AS refop ON refop.REFOPR_ID = rpm.REFOPR_ID
 		JOIN    dbo.REL_EMPRESA_FILIAL_OPERADORA AS refo ON refo.REFO_ID = refop.REFO_ID
