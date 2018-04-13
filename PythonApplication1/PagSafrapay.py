@@ -40,18 +40,47 @@ def scrapeLogIn(*argv):
         try:
             urls= parser.get('general', 'urls').split(',')
             urlPrefix = ['https://pagseguro.uol.com.br']
+            values = {
+                             "StringResposta": "",
+                             "validaArquivo": "Sim",
+                             "QuantOcor": "0",
+                             "item": "",
+                             "qtditens": "",
+                             "novo_str_user_id": "",
+                             "TIPOOPERACAO": "L",
+                             "tipooperacao": "",
+                             "CAMPO77": "",
+                             "NomeUsuario": "",
+                             "clickok": "",
+                             "dadosger": "",
+                             "ice": "",
+                             "loginpj": "sim",
+                             "opcao": "",
+                             "opcao_tit": "",
+                             "pagina": "teclado9tac.asp",
+                             "senha": "",
+                             "userid": "CONCIL A",
+                             "shortname": "CONCIL ALIANCA",
+                             "strComZoom": "",
+                             "tcln": "",
+                             "expirada": "",
+                             "ctrl": ""
+                         }
+
+            headers = {'"User-Agent"':'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Accept-Encoding':'gzip, deflate, br', 'Accept-Language':'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7'}
 
             "Início da requisição GET na página de log in"
             logger.info('requisicao GET na pagina de log in')
-            result = session_request.get(urls[0])
+            result = session_request.post("https://wwws.lignetsafra.com.br/lignetipj/tac/defaultsenhatac_nv.asp", params = values, headers=headers)
+
             tree = html.fromstring(result.text)
 
             "Payload com os parâmetros de entrada para o log in"
             payload = formatPayloadLogIn(argv[0], argv[1])
-            payload = formatPayloadLogInAuth(payload, tree)
+            #payload = formatPayloadLogInAuth(payload, tree)
           
             logger.info('requisicao POST na pagina de log in')
-            result = session_request.post(urls[0], payload)
+            result = session_request.post("https://wwws.lignetsafra.com.br/lignetipj/tac/defaultsenhatac_nv.asp", payload)
 
             """Requisição GET ao painel de extrato"""
             logger.info('requisicao GET na pagina de extrato')
@@ -69,13 +98,9 @@ def scrapeLogIn(*argv):
             logger.info('requisicao GET na pagina de transações')
             result4 = session_request.get(urls[2], params = params)
 
-            "Requisição para exportar o arquivo no formato informado"
-            params = formatPayloadExportacao()
-            session_request.get(urls[3])
-
             "Requisicao GET para acessar o histórico gerado"
             logger.info('acessando o histórico com requisicao GET')
-            result5 = session_request.get(urls[4])
+            result5 = session_request.get(urls[3])
 
             """Recupera o nome do primeiro arquivo gerado no histórico"""
             logger.info('recuperando arquivo gerado')
@@ -95,7 +120,7 @@ def scrapeLogIn(*argv):
 
             """Faz log out da página"""
             logger.info('realizando log out..')
-            session_request.get(urls[5])
+            session_request.get(urls[4])
             time.sleep(5)
         except IndexError as error:
             logger.error(error)
@@ -117,31 +142,32 @@ def scrapeEstabelecimentos(*argv):
         scrapeLogIn(user, passw, argv[1], argv[2], refoId)
 
     else:
-        estabs = DataAccess.getAll()
-        for estab in estabs:
-            user = estab[0]
-            passw = estab[1]
-            refoId = estab[2]
-            dataFrom = datetime.strftime(datetime.now() - timedelta(1), '%d/%m/%Y')
-            logger.info('usuario %s - data %s', user, dataFrom)
-            scrapeLogIn(user, passw, dataFrom, dataFrom, refoId)
+        #estabs = DataAccess.getAll()
+        #for estab in estabs:
+            #user = estab[0]
+            #passw = estab[1]
+            #refoId = estab[2]
+            #dataFrom = datetime.strftime(datetime.now() - timedelta(1), '%d/%m/%Y')
+            #logger.info('usuario %s - data %s', user, dataFrom)
+            scrapeLogIn("","")
+
 
 def formatPayloadLogIn(*args):
-    payload = {'user': '<USERNAME>', 
-               'pass': '<PASSWORD>',
-               'dest' : '',
-               'skin' : '',
-               'acsrfToken' : ''}
+    payload = {'loginpj' : 'sim',
+                'pagina': 'teclado9tac.asp',
+                'shortname' :'CONCIL+ALIANCA',
+                'TIPOOPERACAO' :'L',
+                'userid' : 'CONCIL+A'}
 
-    payload['user'] = args[0]
-    payload['pass'] = args[1]
+    #payload['user'] = args[0]
+    #payload['pass'] = args[1]
     return payload
 
 """Formata o payload do log in com os dados de autenticacao"""
 def formatPayloadLogInAuth(payload, tree):
-    payload['acsrfToken'] = list(set(tree.xpath("//input[@name='acsrfToken']/@value")))[0]
-    payload['skin'] = list(set(tree.xpath("//input[@name='skin']/@value")))[0]
-    payload['dest'] = list(set(tree.xpath("//input[@name='dest']/@value")))[0]
+    payload['loginpj'] = list(set(tree.xpath("//input[@name='loginpj']/@value")))[0]
+    payload['pagina'] = list(set(tree.xpath("//input[@name='pagina']/@value")))[0]
+    payload['TIPOOPERACAO'] = list(set(tree.xpath("//input[@name='TIPOOPERACAO']/@value")))[0]
     return payload
 
 """Formata o payload com datas"""
@@ -154,10 +180,6 @@ def formatPayload(*argv):
     payloadComDatas['dateTo'] = argv[1]
     payloadComDatas['dateToInic'] = argv[1] # Vem com o mesmo valor de data final
     return payloadComDatas
-
-"""Formata o payload para exportar o arquivo com formato específico"""
-def formatPayloadExportacao(payload, tree):
-    "Sem implementação em Javascript"
 
 """Formata o nome do arquivo"""
 def fileNameFormat(urlFile, refoId, index):
